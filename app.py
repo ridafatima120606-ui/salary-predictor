@@ -102,7 +102,7 @@ CHART_DIR     = "charts"
 @st.cache_resource(show_spinner=False)
 def load_model_and_metadata():
     """Load the trained pipeline and metadata; auto-train if files are missing."""
-    if not os.path.exists(MODEL_PATH):
+    if not os.path.exists(MODEL_PATH) or not os.path.exists(METADATA_PATH):
         with st.spinner("🔧 First run: training the model — this takes ~30 seconds …"):
             result = subprocess.run(
                 [sys.executable, "train_model.py"],
