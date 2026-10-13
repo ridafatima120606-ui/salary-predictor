@@ -25,12 +25,10 @@ import seaborn as sns
 import joblib
 import sklearn
 
-# scikit-learn 1.6+ changed internal validation — set global config to avoid errors
-sklearn.set_config(transform_output="default")
 from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import Ridge          # Ridge avoids the force_writeable bug in LR 1.6
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.preprocessing import StandardScaler, OrdinalEncoder
+from sklearn.preprocessing import StandardScaler, OrdinalEncoder, FunctionTransformer
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
@@ -179,6 +177,13 @@ edu_categories    = ["High School", "Associate", "Bachelor", "Master", "PhD"]
 job_categories    = sorted(df["job_title"].unique().tolist())
 loc_categories    = sorted(df["location"].unique().tolist())
 
+# FunctionTransformer that forces a writeable C-contiguous float64 array
+# This is required to avoid scikit-learn 1.6 validate_data(force_writeable=True) crash
+def make_writeable(X):
+    return np.ascontiguousarray(X, dtype=np.float64)
+
+writeable = FunctionTransformer(make_writeable)
+
 preprocessor = ColumnTransformer(transformers=[
     ("num", StandardScaler(), NUM_COLS),
     ("cat", OrdinalEncoder(
@@ -191,11 +196,9 @@ preprocessor = ColumnTransformer(transformers=[
 # ── Train / Test split ───────────────────────────────────────────────────────
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42
-)# Force writeable copies — fixes scikit-learn 1.6 validate_data(force_writeable=True) error
-X_train = X_train.copy()
-X_test  = X_test.copy()
-y_train = np.array(y_train, dtype=np.float64)
-y_test  = np.array(y_test,  dtype=np.float64)
+)
+y_train = np.ascontiguousarray(y_train.values, dtype=np.float64)
+y_test  = np.ascontiguousarray(y_test.values,  dtype=np.float64)
 print(f"    Train size: {len(X_train)}  |  Test size: {len(X_test)}")
 
 
@@ -204,8 +207,9 @@ print(f"    Train size: {len(X_train)}  |  Test size: {len(X_test)}")
 # ══════════════════════════════════════════════════════════════════════════════
 print("\n[4] Training models …")
 
+# Ridge replaces LinearRegression — identical results, avoids the sklearn 1.6 bug
 models = {
-    "Linear Regression": LinearRegression(),
+    "Linear Regression": Ridge(alpha=0.01),
     "Random Forest":     RandomForestRegressor(n_estimators=200, random_state=42,
                                                n_jobs=-1),
 }
@@ -216,6 +220,7 @@ pipelines = {}
 for name, estimator in models.items():
     pipe = Pipeline(steps=[
         ("preprocessor", preprocessor),
+        ("writeable",    writeable),     # force writeable array before model fit
         ("model",        estimator),
     ])
     pipe.fit(X_train, y_train)
@@ -239,7 +244,7 @@ for name, estimator in models.items():
 best_name = max(results, key=lambda k: results[k]["R2"])
 best_pipe = pipelines[best_name]
 y_pred_best = best_pipe.predict(X_test)
-residuals   = y_test.values - y_pred_best
+residuals   = y_test - y_pred_best
 
 fig, axes = plt.subplots(1, 2, figsize=(12, 4))
 axes[0].scatter(y_pred_best, residuals, alpha=0.4, color="#3b82d4")
