@@ -23,7 +23,10 @@ matplotlib.use("Agg")           # headless – no display needed
 import matplotlib.pyplot as plt
 import seaborn as sns
 import joblib
+import sklearn
 
+# scikit-learn 1.6+ changed internal validation — set global config to avoid errors
+sklearn.set_config(transform_output="default")
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
