@@ -18,6 +18,8 @@ from sklearn.preprocessing import StandardScaler, OrdinalEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
+from model_wrapper import RandomForestWrapper
+
 warnings.filterwarnings("ignore")
 sns.set_theme(style="whitegrid", palette="muted")
 
@@ -52,7 +54,7 @@ df.dropna(subset=["salary"], inplace=True)
 print(f"    Clean shape: {df.shape}")
 print(df["salary"].describe().to_string())
 
-print("\n[2] Generating EDA charts …")
+print("\n[2] Generating EDA charts ...")
 
 fig, ax = plt.subplots(figsize=(9, 4))
 sns.histplot(df["salary"], bins=40, kde=True, color="#3b82d4", ax=ax)
@@ -87,7 +89,7 @@ plt.tight_layout(); fig.savefig(f"{CHART_DIR}/salary_by_location.png", dpi=120);
 print(f"    Median salary: ${df['salary'].median():,.0f}")
 print(f"    Experience-Salary corr: {df['experience'].corr(df['salary']):.3f}")
 
-print("\n[3] Preprocessing …")
+print("\n[3] Preprocessing ...")
 
 FEATURES = ["age", "education", "job_title", "location", "experience"]
 TARGET   = "salary"
@@ -119,7 +121,7 @@ y_train_a = np.ascontiguousarray(y_train.values, dtype=np.float64)
 y_test_a  = np.ascontiguousarray(y_test.values,  dtype=np.float64)
 print(f"    Train: {len(X_train_t)}  Test: {len(X_test_t)}")
 
-print("\n[4] Training Random Forest …")
+print("\n[4] Training Random Forest ...")
 rf = RandomForestRegressor(n_estimators=200, random_state=42, n_jobs=-1)
 rf.fit(X_train_t, y_train_a)
 rf_pred = rf.predict(X_test_t)
@@ -129,7 +131,7 @@ rf_r2   = r2_score(y_test_a, rf_pred)
 
 print(f"    MAE  : ${rf_mae:,.2f}")
 print(f"    RMSE : ${rf_rmse:,.2f}")
-print(f"    R²   : {rf_r2:.4f}")
+print(f"    R2   : {rf_r2:.4f}")
 
 results = {"Random Forest": {"MAE": rf_mae, "RMSE": rf_rmse, "R2": rf_r2}}
 
@@ -137,7 +139,7 @@ fig, axes = plt.subplots(1, 2, figsize=(12, 4))
 residuals = y_test_a - rf_pred
 axes[0].scatter(rf_pred, residuals, alpha=0.4, color="#3b82d4")
 axes[0].axhline(0, color="red", linestyle="--")
-axes[0].set_title("Residuals — Random Forest", fontsize=13)
+axes[0].set_title("Residuals - Random Forest", fontsize=13)
 axes[0].set_xlabel("Predicted Salary"); axes[0].set_ylabel("Residual")
 axes[1].scatter(y_test_a, rf_pred, alpha=0.4, color="#7c5cd8")
 axes[1].plot([y_test_a.min(), y_test_a.max()], [y_test_a.min(), y_test_a.max()], "r--")
@@ -147,32 +149,23 @@ plt.tight_layout()
 fig.savefig(f"{CHART_DIR}/residuals_Random_Forest.png", dpi=120)
 plt.close(fig)
 
-print("\n[5] Saving …")
-
-class RandomForestWrapper:
-    def __init__(self, preprocessor, model):
-        self.preprocessor = preprocessor
-        self.model = model
-    def predict(self, X):
-        Xt = np.ascontiguousarray(self.preprocessor.transform(X), dtype=np.float64)
-        return self.model.predict(Xt)
+print("\n[5] Saving ...")
 
 best_pipe = RandomForestWrapper(preprocessor, rf)
 joblib.dump(best_pipe, os.path.join(MODEL_DIR, "best_model.joblib"))
-joblib.dump(best_pipe, os.path.join(MODEL_DIR, "random_forest_pipeline.joblib"))
 print("    Saved: models/best_model.joblib")
 
 metadata = {
-    "best_model":      "Random Forest",
-    "edu_categories":  edu_categories,
-    "job_categories":  job_categories,
-    "loc_categories":  loc_categories,
-    "results":         results,
+    "best_model":     "Random Forest",
+    "edu_categories": edu_categories,
+    "job_categories": job_categories,
+    "loc_categories": loc_categories,
+    "results":        results,
 }
 joblib.dump(metadata, os.path.join(MODEL_DIR, "metadata.joblib"))
 print("    Saved: models/metadata.joblib")
 
-print("\n[6] Sanity check …")
+print("\n[6] Sanity check ...")
 sample = pd.DataFrame([{
     "age": 30, "education": "Bachelor",
     "job_title": "Data Scientist",
