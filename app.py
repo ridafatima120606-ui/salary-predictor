@@ -18,7 +18,11 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import seaborn as sns
 import joblib
+import sklearn
 import streamlit as st
+
+# scikit-learn 1.6+ compatibility
+sklearn.set_config(transform_output="default")
 
 # ── Page configuration ────────────────────────────────────────────────────────
 st.set_page_config(
