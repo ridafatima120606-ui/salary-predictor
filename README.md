@@ -208,3 +208,5 @@ Predictions are **statistical estimates** based on synthetic training data. They
 | scikit-learn  | ≥ 1.3     | ML models and preprocessing      |
 | joblib        | ≥ 1.3     | Model serialisation              |
 | streamlit     | ≥ 1.32    | Web application framework        |
+
+Live Streamlit App for testing:https://salary-predictor-gohkywg5xar8s4xgg3cjra.streamlit.app/
